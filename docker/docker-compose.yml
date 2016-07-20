@@ -1,0 +1,14 @@
+nginx:
+  restart: always
+  build: ./nginx
+  ports:
+    - "80:80"
+  links:
+    - test:test
+
+test:
+  build: ./php7.0
+  command: php -S 0.0.0.0:8000 -t /web
+  volumes:
+    - /srv/www:/web
+  restart: always
