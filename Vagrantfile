@@ -8,10 +8,12 @@ Vagrant.configure("2") do |config|
 
   config.ssh.forward_agent = true
 
+  config.vm.synced_folder "../www", "/srv/www", :nfs => true
   config.vm.synced_folder "./docker", "/docker", :nfs => true
+  config.vm.synced_folder "./deploy", "/deploy", :nfs => true
 
   config.vm.provider :virtualbox do |vb|
-    vb.name = "DevDockerBox"
+    vb.name = "QA Arilo Box 1.0"
     vb.customize [
       "modifyvm", :id,
       "--memory", 8192,
