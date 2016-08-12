@@ -1,13 +1,14 @@
 #!/usr/bin/python
 
 # import system libraries
-import md5, random, commands, sys, getopt
+import md5, random, commands, sys, getopt, os, time
 
 def main(argv):
     build = 'php5.6'
-    getoptComunicate = sys.argv[0] + " -h [-b <build>]"
+    name = False
+    getoptComunicate = sys.argv[0] + " -h [-n <name>] [-b <build>]"
     try:
-        opts, args = getopt.getopt(argv,"hb:",["build="])
+        opts, args = getopt.getopt(argv,"hn:b:",["name=", "build="])
     except getopt.GetoptError:
         print getoptComunicate
         sys.exit(2)
@@ -17,8 +18,11 @@ def main(argv):
             sys.exit()
         elif opt in ("-b", "--build"):
             build = arg
+        elif opt in ("-n", "--name"):
+            name = arg
     return {
-        'build': build
+        'build': build,
+        'name': name
     }
 
 args = {}
@@ -30,14 +34,24 @@ DOCKER_COMPOSE_FILE = 'docker-compose.override.yml'
 DOCKER_COMPOSE_TMP_FILE = 'docker-compose.override.yml.tmp'
 QA_PREFIX = 'qa'
 
-# @todo check exist docker-compose.override.yml.tmp, if exist sleeping
+while(1):
+    if os.path.isfile('/docker/' + DOCKER_COMPOSE_TMP_FILE):
+        print DOCKER_COMPOSE_TMP_FILE + " exist, waiting 5 seconds ..."
+        time.sleep(5)
+    else:
+        commands.getoutput('touch /docker/' + DOCKER_COMPOSE_FILE)
+        print DOCKER_COMPOSE_TMP_FILE + " not exist"
+        break
 
-randomHex = md5.new(str(random.randint(0, 10000))).hexdigest()
-qaName = QA_PREFIX + '-' + randomHex[0:10]
+if args['name']:
+    qaName = QA_PREFIX + '-' + args['name']
+else:
+    randomHex = md5.new(str(random.randint(0, 10000))).hexdigest()
+    qaName = QA_PREFIX + '-' + randomHex[0:10]
+
 nginxConfig = '/docker/nginx/local/' + qaName + '.conf'
-
 commands.getoutput("mkdir /srv/www/" + qaName)
-commands.getoutput('touch /docker/' + DOCKER_COMPOSE_FILE)
+commands.getoutput("cp -R /srv/dbs/global /srv/dbs/" + qaName)
 
 # @todo deploy stuff
 
@@ -69,7 +83,14 @@ fout.write('    - /srv/www/' + qaName + ':/web\n')
 fout.write('  restart: always\n')
 fout.write('\n')
 fout.write('db-' + qaName + ':\n')
-fout.write('  image: orchardup/mysql\n')
+fout.write('  build: ./mysql5.7\n')
+fout.write('  ports:\n')
+fout.write('    - "3306:3306"\n')
+fout.write('  volumes:\n')
+fout.write('    - /srv/dbs/' + qaName + ':/var/lib/mysql\n')
+fout.write('  environment:\n')
+fout.write('    MYSQL_ROOT_PASSWORD: xBXHyS5br5D45by6A5b3eKVz6\n')
+#fout.write('    MYSQL_ALLOW_EMPTY_PASSWORD: yes\n')
 fout.write('\n')
 fout.close()
 
